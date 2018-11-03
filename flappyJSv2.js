@@ -99,16 +99,39 @@ class NeuralNetwork {
     this.outputWeigths.mutate(mutationRate)
   }
 
-  draw(context, inputs){
-    ctx.clearRect(0, 950, 1000, 1200)
-    ctx.font = "10px Comic Sans MS"
-    inputs.forEach( (elem, index) => ctx.strokeText(elem.toFixed(3), 50, 1000 + index*25))
+  static draw(nn, context, inputs){
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height)
+    inputs.forEach( (elem, index) =>{
+      context.lineWidth = 1 // A set ailleurs
+      context.strokeText(elem.toFixed(3), 50, 1000 + index*50)
+
+      let intensity = elem * 255
+      context.fillStyle = 'rgb(0,' + intensity + ' ,0)'
+      context.beginPath()
+      context.arc(100, 1000 + index*50, 10, 0, 2*Math.PI)
+      context.fill()
+
+    })
+    context.lineWidth = 4 // A set ailleurs
+    nn.hiddenWeights.data.forEach( (ligne, indexLigne) => {
+      ligne.forEach( (value, indexColonne) => {
+        context.beginPath()
+        let colorIntensity = Math.abs(value) * 255
+        if(value > 0){
+          context.strokeStyle = 'rgb(0, ' + colorIntensity + ', 0)'
+        }
+        else{
+          context.strokeStyle = 'rgb(' + colorIntensity + ', 0, 0)'
+        }
+        context.moveTo(100, 1000 + indexColonne*50)
+        context.lineTo(300, 1000 + indexLigne*50)
+        context.stroke()
+      })
+    })
+
   }
 }
-// ctx.beginPath()
-// ctx.arc(bird.x + jeu.positionX, bird.y + jeu.positionX, bird.size, 0, 2*Math.PI)
-// ctx.fill()
-// ctx.strokeText("Score : " + jeu.score, 50, 40)
+// Passer le code en full anglais
 
 const sigmoid = x => 1 / (1 + Math.exp(-x));
 const relu = x => x < 0 ? 0 : x
@@ -129,15 +152,21 @@ NeuralNetwork.prototype.think = function(inputs){
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 window.addEventListener('load', init)
-var ctx, canvas
+var contextctx, canvas
+var ctxNeuralNetwork, canvasNN
 var width, height
+// Ajouter resize function
 function init(){
   canvas = document.getElementById('mon_canvas')
   ctx = canvas.getContext('2d')
+  canvasNN = document.getElementById('neuralNetworkCanvas')
+  ctxNeuralNetwork = canvasNN.getContext('2d') // Voir pour l'ajouter avec une fonction dans la librairie
   width = window.innerWidth
   height = window.innerHeight
   ctx.canvas.width = width
   ctx.canvas.height = height
+  ctxNeuralNetwork.canvas.width = width
+  ctxNeuralNetwork.canvas.height = height
   createBirds()
   loop()
 }
@@ -196,7 +225,7 @@ function useBrain(bird, indexBird){
     (jeu.listePipes[0].x-bird.x) / (jeu.width) //(entre 100 et 950)->850 (oiseauX maxXpipe)
     // 1 BIAS ???
   ]
-  if(indexBird === 0) bird.brain.draw(ctx, inputs)
+  if(indexBird === 0) NeuralNetwork.draw(bird.brain, ctxNeuralNetwork, inputs)
   inputs = Matrix.toMatrix(inputs)
   let results = bird.brain.think(inputs).data
   return results[0][0]
@@ -212,7 +241,7 @@ Bird = function(fromParent){
   this.collision = false
   this.color = getRandomColor()
   if(!fromParent){
-    this.brain = new NeuralNetwork(5, 4, 1)
+    this.brain = new NeuralNetwork(5, 5, 1)
   }
   else{
     // Selection d'un parent
@@ -385,8 +414,7 @@ function gravity(){
 }
 
 function dessin(){
-	// ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.clearRect(0, 0, jeu.width+200, jeu.height+jeu.positionY+1)
+	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 	ctx.fillStyle = "#83f442"
 	for (p of jeu.listePipes) {
 		ctx.fillRect(p.x + jeu.positionX, p.y1 + jeu.positionY, p.width, p.height1) // top pipe
@@ -429,9 +457,9 @@ document.onkeypress = function(e){
 }
 
 function getRandomColor() {
-  var letters = '0123456789ABCDEF';
-  var color = '#';
-  for (var i = 0; i < 6; i++) {
+  let letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i=0; i<6; i++) {
     color += letters[Math.floor(Math.random() * 16)];
   }
   return color;
