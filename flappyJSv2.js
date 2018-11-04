@@ -84,13 +84,20 @@ class Matrix {
   }
 }
 // Faire une classe genetic algo avec proba, pick parent etc
+// Ajouter paramètres, comme tableau chaine de caractères pour inputs signification à écrire devant le dessin du nn
 class NeuralNetwork {
-  constructor(listLayers) {
+  constructor(listLayers, drawX = 80, drawY = 80, gapLayer = 200, gapPerceptron = 50, radiusPerceptron = 20, thicknessWeights = 4) {
     if(listLayers instanceof NeuralNetwork){
       let nn = listLayers
       let layers = []
       nn.layers.forEach( (layer, index) => layers[index] = layer.copy())
       this.layers = layers
+      this.drawX = nn.drawX
+      this.drawY = nn.drawY
+      this.gapLayer = nn.gapLayer
+      this.gapPerceptron = nn.gapPerceptron
+      this.radiusPerceptron = nn.radiusPerceptron
+      this.thicknessWeights = nn.thicknessWeights
     }
     else{
       let layers = []
@@ -100,7 +107,14 @@ class NeuralNetwork {
         }
       })
       this.layers = layers
+      this.drawX = drawX
+      this.drawY = drawY
+      this.gapLayer = gapLayer
+      this.gapPerceptron = gapPerceptron
+      this.radiusPerceptron = radiusPerceptron
+      this.thicknessWeights = thicknessWeights
     }
+
   }
   copy(){
     return new NeuralNetwork(this);
@@ -118,25 +132,24 @@ class NeuralNetwork {
     return outputs
   }
   // Faire un set function activations en propriété du nn plutot que map pour appliquer une fonction variable
-  // Ajouter des paramètres, des propriétés au nn, comme tableau chaine de caractères pour inputs signification à écrire devant le dessin du nn
-  static draw(neuralNetwork, context, inputs){
+  static draw(nn, context, inputs){
     context.clearRect(0, 0, context.canvas.width, context.canvas.height)
 
     inputs.forEach( (elem, index) =>{ // Voir si on peut draw les inputs dans la boucle du dessous où s'il faut vraiment séparer
       context.lineWidth = 1 // A set ailleurs
       context.strokeStyle = 'rgb(0, 0, 0)'
-      context.strokeText(elem.toFixed(3), 50, 1000 + index*50) // A set en option
-      // A set en option : le 1000 offset en variable
+      context.strokeText(elem.toFixed(3), nn.drawX - 50, nn.drawY + index*nn.gapPerceptron) // A set en option
+
       let intensity = elem * 255
       context.fillStyle = 'rgb(0, ' + intensity + ', 0)'
       context.beginPath()
-      context.arc(100, 1000 + index*50, 20, 0, 2*Math.PI)
+      context.arc(nn.drawX, nn.drawY + index*nn.gapPerceptron, nn.radiusPerceptron, 0, 2*Math.PI)
       context.fill()
     })
 
     let outputs = Matrix.toMatrix(inputs)
-    neuralNetwork.layers.forEach( (layer, index, layers) =>{
-      context.lineWidth = 4 // A set ailleurs
+    nn.layers.forEach( (layer, index, layers) =>{
+      context.lineWidth = nn.thicknessWeights// A set ailleurs
 
       let result = Matrix.multiply(layer, outputs)
       result.map(relu)
@@ -145,7 +158,7 @@ class NeuralNetwork {
         let intensity = elem * 255
         context.fillStyle = 'rgb(0, ' + intensity + ', 0)'
         context.beginPath()
-        context.arc(300 + index*200, 1000 + indexOutputs*50, 20, 0, 2*Math.PI)
+        context.arc(nn.drawX + (index+1)*nn.gapLayer, nn.drawY + indexOutputs*nn.gapPerceptron, nn.radiusPerceptron, 0, 2*Math.PI)
         context.fill()
       })
       outputs = Matrix.toMatrix(outputs)
@@ -160,12 +173,9 @@ class NeuralNetwork {
           else{
             context.strokeStyle = 'rgb(' + colorIntensity + ', 0, 0)'
           }
-          // x : 200 = ecart, 100 start
-          context.moveTo(100 + index*200, 1000 + indexColonne*50)
-          context.lineTo(300 + index*200, 1000 + indexLigne*50)
+          context.moveTo(nn.drawX + index*nn.gapLayer, nn.drawY + indexColonne*nn.gapPerceptron)
+          context.lineTo(nn.drawX + (index+1)*nn.gapLayer, nn.drawY + indexLigne*nn.gapPerceptron)
           context.stroke()
-
-
         })
       })
     })
@@ -180,8 +190,6 @@ const step = x => x < 0 ? 0 : 1
 const identity = x => x
 
 
-//////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +282,8 @@ Bird = function(fromParent){
   this.collision = false
   this.color = getRandomColor()
   if(!fromParent){
-    this.brain = new NeuralNetwork([5, 5, 1])
+    this.brain = new NeuralNetwork([5, 2, 1])
+    this.brain.drawY = 1000
   }
   else{
     // Selection d'un parent
