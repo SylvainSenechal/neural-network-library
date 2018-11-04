@@ -27,7 +27,7 @@ class Matrix {
   static multiply(m1, m2){
     let matrix = new Matrix(m1.rows, m2.cols)
     if(m1.cols != m2.rows){
-      console.error('multiplication impossible')
+      console.error('Cannot multiply m1 and m2')
       return
     }
     for(let i=0; i<m1.rows; i++){
@@ -48,6 +48,18 @@ class Matrix {
       matrix.data[i][0] = array[i]
     }
     return matrix
+  }
+
+  static toArray(matrix){
+    if(matrix.cols != 1){
+      console.error("Cannot transform multi dimensionnal matrix into array")
+      return void 0
+    }
+    let array = []
+    for(let i=0; i<matrix.rows; i++){
+      array.push(matrix.data[i][0])
+    }
+    return array
   }
 
   copy(){
@@ -73,78 +85,100 @@ class Matrix {
 }
 // Faire une classe genetic algo avec proba, pick parent etc
 class NeuralNetwork {
-  constructor(nbInputs, nbHidden, nbOutput) {
-    if(nbInputs instanceof NeuralNetwork){
-      let nn = nbInputs
-      this.nbInputs = nn.nbInputs
-      this.nbHidden = nn.nbHidden
-      this.nbOutput = nn.nbOutput
-      this.hiddenWeights = nn.hiddenWeights.copy()
-      this.outputWeigths = nn.outputWeigths.copy()
+  constructor(listLayers) {
+    if(listLayers instanceof NeuralNetwork){
+      let nn = listLayers
+      let layers = []
+      nn.layers.forEach( (layer, index) => layers[index] = layer.copy())
+      this.layers = layers
     }
     else{
-      this.nbInputs = nbInputs
-      this.nbHidden = nbHidden
-      this.nbOutput = nbOutput
-      // this.networkWeights = [] puis pour chaque [i] = new Matrix(nbHidden, nbInputs+1)
-      this.hiddenWeights = new Matrix(nbHidden, nbInputs)
-      this.outputWeigths = new Matrix(nbOutput, nbHidden)
+      let layers = []
+      listLayers.forEach( (layer, index, listLayers) =>{
+        if(index != listLayers.length -1){
+          layers[index] = new Matrix(listLayers[index+1], layer)
+        }
+      })
+      this.layers = layers
     }
   }
   copy(){
     return new NeuralNetwork(this);
   }
   mutate(mutationRate){
-    this.hiddenWeights.mutate(mutationRate)
-    this.outputWeigths.mutate(mutationRate)
+    this.layers.forEach( layer => layer.mutate(mutationRate))
   }
-
-  static draw(nn, context, inputs){
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height)
-    inputs.forEach( (elem, index) =>{
-      context.lineWidth = 1 // A set ailleurs
-      context.strokeText(elem.toFixed(3), 50, 1000 + index*50)
-
-      let intensity = elem * 255
-      context.fillStyle = 'rgb(0,' + intensity + ' ,0)'
-      context.beginPath()
-      context.arc(100, 1000 + index*50, 10, 0, 2*Math.PI)
-      context.fill()
-
+  think(inputs){
+    let outputs = Matrix.toMatrix(inputs)
+    this.layers.forEach( layer =>{
+      let result = Matrix.multiply(layer, outputs)
+      result.map(relu)
+      outputs = result
     })
-    context.lineWidth = 4 // A set ailleurs
-    nn.hiddenWeights.data.forEach( (ligne, indexLigne) => {
-      ligne.forEach( (value, indexColonne) => {
+    return outputs
+  }
+  // Faire un set function activations en propriété du nn plutot que map pour appliquer une fonction variable
+  // Ajouter des paramètres, des propriétés au nn, comme tableau chaine de caractères pour inputs signification à écrire devant le dessin du nn
+  static draw(neuralNetwork, context, inputs){
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height)
+
+    inputs.forEach( (elem, index) =>{ // Voir si on peut draw les inputs dans la boucle du dessous où s'il faut vraiment séparer
+      context.lineWidth = 1 // A set ailleurs
+      context.strokeStyle = 'rgb(0, 0, 0)'
+      context.strokeText(elem.toFixed(3), 50, 1000 + index*50) // A set en option
+      // A set en option : le 1000 offset en variable
+      let intensity = elem * 255
+      context.fillStyle = 'rgb(0, ' + intensity + ', 0)'
+      context.beginPath()
+      context.arc(100, 1000 + index*50, 20, 0, 2*Math.PI)
+      context.fill()
+    })
+
+    let outputs = Matrix.toMatrix(inputs)
+    neuralNetwork.layers.forEach( (layer, index, layers) =>{
+      context.lineWidth = 4 // A set ailleurs
+
+      let result = Matrix.multiply(layer, outputs)
+      result.map(relu)
+      outputs = Matrix.toArray(result)
+      outputs.forEach( (elem, indexOutputs) =>{
+        let intensity = elem * 255
+        context.fillStyle = 'rgb(0, ' + intensity + ', 0)'
         context.beginPath()
-        let colorIntensity = Math.abs(value) * 255
-        if(value > 0){
-          context.strokeStyle = 'rgb(0, ' + colorIntensity + ', 0)'
-        }
-        else{
-          context.strokeStyle = 'rgb(' + colorIntensity + ', 0, 0)'
-        }
-        context.moveTo(100, 1000 + indexColonne*50)
-        context.lineTo(300, 1000 + indexLigne*50)
-        context.stroke()
+        context.arc(300 + index*200, 1000 + indexOutputs*50, 20, 0, 2*Math.PI)
+        context.fill()
+      })
+      outputs = Matrix.toMatrix(outputs)
+
+      layer.data.forEach( (ligne, indexLigne) => {
+        ligne.forEach( (value, indexColonne) => {
+          context.beginPath()
+          let colorIntensity = Math.abs(value) * 255 * inputs[indexColonne]
+          if(value > 0){
+            context.strokeStyle = 'rgb(0, ' + colorIntensity + ', 0)'
+          }
+          else{
+            context.strokeStyle = 'rgb(' + colorIntensity + ', 0, 0)'
+          }
+          // x : 200 = ecart, 100 start
+          context.moveTo(100 + index*200, 1000 + indexColonne*50)
+          context.lineTo(300 + index*200, 1000 + indexLigne*50)
+          context.stroke()
+
+
+        })
       })
     })
-
   }
 }
 // Passer le code en full anglais
 
+// Mettre les functions d'activations en this. du nn
 const sigmoid = x => 1 / (1 + Math.exp(-x));
 const relu = x => x < 0 ? 0 : x
 const step = x => x < 0 ? 0 : 1
 const identity = x => x
-// Mettre les functions d'activations en this. du nn
-NeuralNetwork.prototype.think = function(inputs){
-  let result1 = Matrix.multiply(this.hiddenWeights, inputs)
-  result1.map(identity)
-  let result2 = Matrix.multiply(this.outputWeigths, result1)
-  result2.map(identity)
-  return result2
-}
+
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -212,7 +246,7 @@ var jeu = {
   mutationRate: 0.1
 }
 
-function useBrain(bird, indexBird){
+function useBrain(bird, indexBird){ // Mettre cette fonction dans la librairie ?
   // inputs = [yBird, yTopPipe, yBottomPipe, birdSpeed] + normalize
   // Sur inputs dst du pipe ajouter la largeur du pipe
   // Voir problème du hole pipe qui retrecis et qui fausse l'inputs
@@ -226,7 +260,6 @@ function useBrain(bird, indexBird){
     // 1 BIAS ???
   ]
   if(indexBird === 0) NeuralNetwork.draw(bird.brain, ctxNeuralNetwork, inputs)
-  inputs = Matrix.toMatrix(inputs)
   let results = bird.brain.think(inputs).data
   return results[0][0]
 }
@@ -241,7 +274,7 @@ Bird = function(fromParent){
   this.collision = false
   this.color = getRandomColor()
   if(!fromParent){
-    this.brain = new NeuralNetwork(5, 5, 1)
+    this.brain = new NeuralNetwork([5, 5, 1])
   }
   else{
     // Selection d'un parent
@@ -255,10 +288,10 @@ Tuyau = function(){
   jeu.holePipe = jeu.holePipe * jeu.holePipeDecreaseRate
   if(jeu.holePipe < jeu.holePipeMin) jeu.holePipe = jeu.holePipeMin
 //  jeu.holePipe = jeu.holePipeMin // A RETIRER
-  let h1Part   = Math.random() * (1-jeu.holePipe)
 
   this.x       = jeu.width
   this.width   = jeu.pipeWidth
+  let h1Part   = Math.random() * (1-jeu.holePipe)
 	this.height1 = jeu.height*h1Part
 	this.height2 = jeu.height - this.height1 - jeu.holePipe*jeu.height
   this.y1      = 0
@@ -384,7 +417,7 @@ function gravity(){
   	}
 
     if(jeu.listePipes.length>=1){ // on a besoin d'un pipe à prendre en entrée pour useBrain
-      if(useBrain(bird, indexBird) >= 0.0){
+      if(useBrain(bird, indexBird) >= 0.5){
     		if(bird.birdVertSpeed > 0){
     			bird.birdVertSpeed = 0
     		}
