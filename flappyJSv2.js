@@ -1,7 +1,3 @@
-// Afficher le nombre de morts/initial
-// !! w1 > 1 trouvé..
-
-
 class Matrix {
   constructor(rows, cols){
     this.rows = rows
@@ -86,7 +82,7 @@ class Matrix {
 // Faire une classe genetic algo avec proba, pick parent etc
 // Ajouter paramètres, comme tableau chaine de caractères pour inputs signification à écrire devant le dessin du nn
 class NeuralNetwork {
-  constructor(listLayers, drawX = 80, drawY = 80, gapLayer = 200, gapPerceptron = 50, radiusPerceptron = 20, thicknessWeights = 4) {
+  constructor(listLayers, activationFunction = relu, drawX = 80, drawY = 80, gapLayer = 200, gapPerceptron = 50, radiusPerceptron = 20, thicknessWeights = 4) {
     if(listLayers instanceof NeuralNetwork){
       let nn = listLayers
       let layers = []
@@ -98,10 +94,11 @@ class NeuralNetwork {
       this.gapPerceptron = nn.gapPerceptron
       this.radiusPerceptron = nn.radiusPerceptron
       this.thicknessWeights = nn.thicknessWeights
+      this.activationFunction = nn.activationFunction
     }
     else{
       let layers = []
-      listLayers.forEach( (layer, index, listLayers) =>{
+      listLayers.forEach( (layer, index, listLayers) => {
         if(index != listLayers.length -1){
           layers[index] = new Matrix(listLayers[index+1], layer)
         }
@@ -113,8 +110,8 @@ class NeuralNetwork {
       this.gapPerceptron = gapPerceptron
       this.radiusPerceptron = radiusPerceptron
       this.thicknessWeights = thicknessWeights
+      this.activationFunction = activationFunction
     }
-
   }
   copy(){
     return new NeuralNetwork(this);
@@ -124,21 +121,21 @@ class NeuralNetwork {
   }
   think(inputs){
     let outputs = Matrix.toMatrix(inputs)
-    this.layers.forEach( layer =>{
+    this.layers.forEach( layer => {
       let result = Matrix.multiply(layer, outputs)
-      result.map(relu)
+      result.map(this.activationFunction)
       outputs = result
     })
-    return outputs
+    return Matrix.toArray(outputs)
   }
-  // Faire un set function activations en propriété du nn plutot que map pour appliquer une fonction variable
+
   static draw(nn, context, inputs){
     context.clearRect(0, 0, context.canvas.width, context.canvas.height)
 
-    inputs.forEach( (elem, index) =>{ // Voir si on peut draw les inputs dans la boucle du dessous où s'il faut vraiment séparer
-      context.lineWidth = 1 // A set ailleurs
+    inputs.forEach( (elem, index) => { // Voir si on peut draw les inputs dans la boucle du dessous où s'il faut vraiment séparer
+      context.lineWidth = 1 // A set ailleurs ?
       context.strokeStyle = 'rgb(0, 0, 0)'
-      context.strokeText(elem.toFixed(3), nn.drawX - 50, nn.drawY + index*nn.gapPerceptron) // A set en option
+      context.strokeText(elem.toFixed(3), nn.drawX - 50, nn.drawY + index*nn.gapPerceptron) // A set en option ?
 
       let intensity = elem * 255
       context.fillStyle = 'rgb(0, ' + intensity + ', 0)'
@@ -148,13 +145,13 @@ class NeuralNetwork {
     })
 
     let outputs = Matrix.toMatrix(inputs)
-    nn.layers.forEach( (layer, index, layers) =>{
-      context.lineWidth = nn.thicknessWeights// A set ailleurs
+    nn.layers.forEach( (layer, index, layers) => {
+      context.lineWidth = nn.thicknessWeights// A set ailleurs ?
 
       let result = Matrix.multiply(layer, outputs)
-      result.map(relu)
+      result.map(nn.activationFunction)
       outputs = Matrix.toArray(result)
-      outputs.forEach( (elem, indexOutputs) =>{
+      outputs.forEach( (elem, indexOutputs) => {
         let intensity = elem * 255
         context.fillStyle = 'rgb(0, ' + intensity + ', 0)'
         context.beginPath()
@@ -181,9 +178,9 @@ class NeuralNetwork {
     })
   }
 }
+// Ajouter BIAS ?
 // Passer le code en full anglais
-
-// Mettre les functions d'activations en this. du nn
+// Mettre les functions d'activations dans la lib
 const sigmoid = x => 1 / (1 + Math.exp(-x));
 const relu = x => x < 0 ? 0 : x
 const step = x => x < 0 ? 0 : 1
@@ -193,12 +190,11 @@ const identity = x => x
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
-window.addEventListener('load', init)
 var contextctx, canvas
 var ctxNeuralNetwork, canvasNN
 var width, height
 // Ajouter resize function
-function init(){
+const init = () => {
   canvas = document.getElementById('mon_canvas')
   ctx = canvas.getContext('2d')
   canvasNN = document.getElementById('neuralNetworkCanvas')
@@ -213,14 +209,12 @@ function init(){
   loop()
 }
 
-var cpt = 0
-function loop(){ // Voir l'ordre des fonctions
+const loop = () => {
 	createPipes()
-  cpt++
-//  if(cpt % 5 === 0)
+
   gravity()
   updatePipesPosition()
-  removePastPipes() // attention a l'ordre collision et remove pipes
+  removePastPipes()
   collisions()
   updateScore()
 
@@ -230,7 +224,7 @@ function loop(){ // Voir l'ordre des fonctions
   requestAnimationFrame(loop)
 }
 
-var jeu = {
+const jeu = {
 	width: 900,
   pipeWidth: 900/10,
 	height: 900, // base 600
@@ -239,7 +233,7 @@ var jeu = {
 	lastPipeCreated: 0,
   startingHolePipe: 0.8,
   holePipe: 0.8,
-	holePipeMin: 0.10, // %of the pipe cut off, usually 30%
+	holePipeMin: 0.15, // %of the pipe cut off, usually 30%
   holePipeDecreaseRate: 0.8,
 	listePipes: [],
   listeBird: [],
@@ -254,60 +248,60 @@ var jeu = {
   mutationRate: 0.1
 }
 
-function useBrain(bird, indexBird){ // Mettre cette fonction dans la librairie ?
-  // inputs = [yBird, yTopPipe, yBottomPipe, birdSpeed] + normalize
-  // Sur inputs dst du pipe ajouter la largeur du pipe
-  // Voir problème du hole pipe qui retrecis et qui fausse l'inputs
-  // Retirer le hole pipe qui retrecis et faire sauter oiseau plus lentement
+const useBrain = (bird, indexBird) => {
+  // inputs = [birdSpeed, yBird, xDstFromPipe, yTopPipe, yBottomPipe] + normalize
   let inputs = [
-    (bird.y-bird.size) / (jeu.height-(2*bird.size)),
-    (jeu.listePipes[0].height1) / (jeu.height*(1-jeu.holePipe)),
-    (jeu.listePipes[0].height2) / (jeu.height*(1-jeu.holePipe)),
     (bird.birdVertSpeed+15) / (30), // (Speed/rangeSpeed)
-    (jeu.listePipes[0].x-bird.x) / (jeu.width) //(entre 100 et 950)->850 (oiseauX maxXpipe)
-    // 1 BIAS ???
+    (bird.y-bird.size) / (jeu.height-(2*bird.size)),
+    (jeu.listePipes[0].x-bird.x+jeu.pipeWidth+bird.size) / (jeu.scoreBetweenPipes),
+    (jeu.listePipes[0].height1) / (jeu.height*(1-jeu.holePipe)),
+    (jeu.listePipes[0].height2) / (jeu.height*(1-jeu.holePipe))
   ]
+  if(inputs[2] > 1) inputs[2] = 1
   if(indexBird === 0) NeuralNetwork.draw(bird.brain, ctxNeuralNetwork, inputs)
-  let results = bird.brain.think(inputs).data
-  return results[0][0]
+  let results = bird.brain.think(inputs)
+  return results[0]
 }
 
-Bird = function(fromParent){
-  this.size = 25
-	this.x = 50
-	this.y = this.size + Math.random()*(jeu.height - 2*this.size)
-  this.birdVertSpeed = 0
-  this.fitness = 0
-  this.probability = 0
-  this.collision = false
-  this.color = getRandomColor()
-  if(!fromParent){
-    this.brain = new NeuralNetwork([5, 2, 1])
-    this.brain.drawY = 1000
+class Bird {
+  constructor(fromParent){
+    this.size = 25
+    this.x = 50
+    this.y = this.size + Math.random()*(jeu.height - 2*this.size)
+    this.birdVertSpeed = 0
+    this.fitness = 0
+    this.probability = 0
+    this.collision = false
+    this.color = getRandomColor()
+    if(!fromParent){
+      this.brain = new NeuralNetwork([5, 5, 3, 1])
+      this.brain.drawY = 1000
+    }
+    else{
+      // Selection d'un parent
+      let mother = pickParent()
+      this.brain = mother
+      this.brain.mutate(jeu.mutationRate)
+    }
   }
-  else{
-    // Selection d'un parent
-    let mother = pickParent()
-    this.brain = mother
-    this.brain.mutate(jeu.mutationRate)
+}
+
+class Tuyau {
+  constructor(){
+    jeu.holePipe = jeu.holePipe * jeu.holePipeDecreaseRate
+    if(jeu.holePipe < jeu.holePipeMin) jeu.holePipe = jeu.holePipeMin
+
+    this.x       = jeu.width
+    this.width   = jeu.pipeWidth
+    let h1Part   = Math.random() * (1-jeu.holePipe)
+    this.height1 = jeu.height*h1Part
+    this.height2 = jeu.height - this.height1 - jeu.holePipe*jeu.height
+    this.y1      = 0
+    this.y2      = jeu.height - this.height2
   }
 }
 
-Tuyau = function(){
-  jeu.holePipe = jeu.holePipe * jeu.holePipeDecreaseRate
-  if(jeu.holePipe < jeu.holePipeMin) jeu.holePipe = jeu.holePipeMin
-//  jeu.holePipe = jeu.holePipeMin // A RETIRER
-
-  this.x       = jeu.width
-  this.width   = jeu.pipeWidth
-  let h1Part   = Math.random() * (1-jeu.holePipe)
-	this.height1 = jeu.height*h1Part
-	this.height2 = jeu.height - this.height1 - jeu.holePipe*jeu.height
-  this.y1      = 0
-  this.y2      = jeu.height - this.height2
-}
-
-function calculateFitness() {
+const calculateFitness = () => {
   let minFit = 1000000
   for(let i=0; i<jeu.nbBirds; i++){
     // reduction des ecarts de fitness avec minFit:
@@ -321,7 +315,7 @@ function calculateFitness() {
   }
 }
 
-function calculateProbability(){
+const calculateProbability = () => {
   let sum = 0
   for(let i=0; i<jeu.nbBirds; i++){
     sum += jeu.listDeadBirds[i].fitness
@@ -332,7 +326,7 @@ function calculateProbability(){
   //jeu.listDeadBirds.forEach(elem => console.log(elem.probability))
 }
 
-function pickParent(){
+const pickParent = () => {
   let index = 0
   let rdm = Math.random()
   while( rdm > 0){
@@ -343,7 +337,7 @@ function pickParent(){
   return jeu.listDeadBirds[index].brain.copy()
 }
 
-function restoreGame(){
+const restoreGame = () => {
   if(jeu.listeBird.length == 0){
     jeu.lastPipeCreated = 0
     jeu.listePipes = []
@@ -358,32 +352,36 @@ function restoreGame(){
     jeu.listDeadBirds = []
   }
 }
-function createNewGenBirds(){
+
+const createNewGenBirds = () => {
   for(i=0; i<jeu.nbBirds; i++){
     jeu.listeBird.push(new Bird("fromParent"))
   }
 }
-function createBirds(){
+
+const createBirds = () => {
   for(i=0; i<jeu.nbBirds; i++){
     jeu.listeBird.push(new Bird())
   }
 }
-function updateScore(){
+const updateScore = () => {
   jeu.score += jeu.speed
 }
 
-function createPipes(){
+const createPipes = () => {
 	if(jeu.lastPipeCreated + jeu.scoreBetweenPipes < jeu.score ){
 		jeu.listePipes.push(new Tuyau())
 		jeu.lastPipeCreated = jeu.score
 	}
 }
-function updatePipesPosition(){
+
+const updatePipesPosition = () => {
   for (p of jeu.listePipes) {
 		p.x -= jeu.speed
 	}
 }
-function removePastPipes(){
+
+const removePastPipes = () => {
   if(jeu.listePipes.length>0){ // Car au tout debut y'a aucun pipes
   let bird = jeu.listeBird[0]
     if((bird.x-jeu.listePipes[0].x) > (jeu.listePipes[0].width+bird.size)){
@@ -392,7 +390,7 @@ function removePastPipes(){
   }
 }
 
-function collisions(){
+const collisions = () => {
   if(jeu.listePipes.length>0){ // Si on a 1 pipes devant nous présent (pas le cas au début)
 
     var midPipe = jeu.listePipes[0].x + (jeu.listePipes[0].width/2)
@@ -418,7 +416,7 @@ function collisions(){
   }
 }
 
-function gravity(){
+const gravity = () => {
   jeu.listeBird.forEach((bird, indexBird) => {
     bird.birdVertSpeed += jeu.gravityPower
   	if(bird.birdVertSpeed > 15){
@@ -455,7 +453,7 @@ function gravity(){
   })
 }
 
-function dessin(){
+const dessin = () => {
 	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
 	ctx.fillStyle = "#83f442"
 	for (p of jeu.listePipes) {
@@ -486,19 +484,7 @@ function dessin(){
 	ctx.strokeRect(jeu.positionX, jeu.positionY, jeu.width, jeu.height); // Cadre noir du jeu
 }
 
-
-
-
-
-document.onkeypress = function(e){
-	if(e.keyCode == 32){
-    console.log("restoring game")
-    jeu.listeBird = []
-    restoreGame()
-	}
-}
-
-function getRandomColor() {
+const getRandomColor = () => {
   let letters = '0123456789ABCDEF';
   let color = '#';
   for (let i=0; i<6; i++) {
@@ -506,3 +492,5 @@ function getRandomColor() {
   }
   return color;
 }
+
+window.addEventListener('load', init)
