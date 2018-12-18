@@ -190,7 +190,7 @@ const identity = x => x
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
-var contextctx, canvas
+var context, ctx, canvas
 var ctxNeuralNetwork, canvasNN
 var width, height
 // Ajouter resize function
@@ -274,8 +274,11 @@ class Bird {
     this.collision = false
     this.color = getRandomColor()
     if(!fromParent){
-      this.brain = new NeuralNetwork([5, 5, 3, 1])
+      this.brain = new NeuralNetwork([5, 4, 3, 1])
       this.brain.drawY = 1000
+      // this.brain.gapPerceptron = 10
+      // this.brain.radiusPerceptron = 5
+      // this.brain.thicknessWeights = 1
     }
     else{
       // Selection d'un parent

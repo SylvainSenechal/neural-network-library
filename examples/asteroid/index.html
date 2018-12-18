@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title> Asteroid AI </title>
+    </head>
+    <body>
+        <canvas id="mon_canvas">
+            Your browser doesn't support the canvas api
+        </canvas>
+        <canvas id="neuralNetworkCanvas">
+          Your browser doesn't support the canvas api
+        </canvas>
+    </body>
+</html>
+<style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0px;
+      border: 0px;
+      overflow: hidden; /*  Disable scrollbars */
+      display: block;  /* No floating content on sides */
+    }
+    #mon_canvas{
+      position: absolute;
+      z-index: 1;
+    }
+    #neuralNetworkCanvas{
+      position: absolute;
+      z-index: 2;
+    }
+</style>
+<script src="asteroid.js"></script>
