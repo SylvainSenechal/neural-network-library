@@ -1,0 +1,66 @@
+train(inputsArray, targetArray){
+  let outputs = Matrix.toMatrix(inputsArray)
+  let listResult = []
+  this.layers.forEach( layer => {
+    let result = Matrix.multiply(layer, outputs)
+    result.applyActivationFunction(this.activationFunction)
+    listResult.push(result)
+    outputs = result
+  })
+
+  let targets = Matrix.toMatrix(targetArray)
+
+  let errors = Matrix.subtract(targets, outputs)
+
+  let gradients = Matrix.map(outputs, dsigmoid)
+  gradients.multiply(errors)
+  gradients.multiply(this.learning_rate)
+
+  let hiddenTransposed = Matrix.transpose(listResult[this.layers.length-1])
+  let weightsDeltas = Matrix.multiply(gradients, hiddenTransposed)
+  this.layers[this.layers.length-1].add(weightsDeltas)
+
+  let tmpErrors = errors
+  for( let i = this.layers.length-1; i > 0; i--){
+      let whoT = Matrix.transpose(this.layers[i]);
+
+      let errors = Matrix.subtract(whoT, tmpErrors)
+
+      let gradients = Matrix.map(listResult[i], dsigmoid)
+      gradients.multiply(errors)
+      gradients.multiply(this.learning_rate)
+
+      let hiddenTransposed = Matrix.transpose(listResult[i-1])
+      let weightsDeltas = Matrix.multiply(gradients, hiddenTransposed)
+      console.log('i', i)
+      console.log(weightsDeltas)
+      console.log(this.layers[i-1])
+      console.log(jjja)
+      this.layers[i-1].add(weightsDeltas)
+  }
+
+  train(inputsArray, targetArray){
+    let outputs = Matrix.toMatrix(inputsArray)
+    let listResult = []
+    this.layers.forEach( layer => {
+      let result = Matrix.multiply(layer, outputs)
+      result.applyActivationFunction(this.activationFunction)
+      listResult.push(result)
+      outputs = result
+    })
+
+    let targets = Matrix.toMatrix(targetArray)
+    for( let i = this.layers.length; i > 0; i--){
+        let errors = Matrix.subtract(targets, outputs)
+        let gradients = Matrix.map(outputs, dsigmoid)
+
+        gradients.multiply(errors)
+        gradients.multiply(this.learning_rate)
+
+        let hiddenTransposed = Matrix.transpose(listResult[i-1])
+        let weightsDeltas = Matrix.multiply(gradients, hiddenTransposed)
+        console.log('i', i)
+        console.log(weightsDeltas)
+        console.log(this.layers[i-1])
+        this.layers[i-1].add(weightsDeltas)
+    }

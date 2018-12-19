@@ -113,17 +113,6 @@ class Matrix {
     return matrix
   }
 
-  static subtract(a, b) {
-    // Return a new Matrix a-b
-    let result = new Matrix(a.rows, a.cols);
-    for (let i = 0; i < result.rows; i++) {
-      for (let j = 0; j < result.cols; j++) {
-        result.data[i][j] = a.data[i][j] - b.data[i][j];
-      }
-    }
-    return result;
-  }
-
   static toArray(matrix){
     if(matrix.cols != 1){
       console.error("Cannot transform multi dimensionnal matrix into array")
@@ -174,7 +163,7 @@ class NeuralNetwork {
       this.thicknessWeights = nn.thicknessWeights
       this.activationFunction = nn.activationFunction
 
-      this.learning_rate = 0.1
+      this.learning_rate = 0.25
     }
     else{
       let layers = []
@@ -192,7 +181,7 @@ class NeuralNetwork {
       this.thicknessWeights = thicknessWeights
       this.activationFunction = activationFunction
 
-      this.learning_rate = 0.1
+      this.learning_rate = 0.25
     }
   }
   copy(){
@@ -213,50 +202,42 @@ class NeuralNetwork {
 
   train(inputsArray, targetArray){
     let outputs = Matrix.toMatrix(inputsArray)
+    let listResult = []
+    listResult.push(outputs)
     this.layers.forEach( layer => {
       let result = Matrix.multiply(layer, outputs)
       result.applyActivationFunction(this.activationFunction)
+      listResult.push(result)
       outputs = result
     })
-
     let targets = Matrix.toMatrix(targetArray)
 
-    this.layers = this.layers.slice().reverse().forEach( layer => {
-      let errors = Matrix.substract(targets, outputs)
-      let gradients = Matrix.map(outputs, dsigmoid)
+    let errors = Matrix.subtract(targets, outputs)
 
+    let gradients = Matrix.map(outputs, dsigmoid)
+    gradients.multiply(errors)
+    gradients.multiply(this.learning_rate)
+
+    let hiddenTransposed = Matrix.transpose(listResult[this.layers.length-1])
+    let weightsDeltas = Matrix.multiply(gradients, hiddenTransposed)
+    this.layers[this.layers.length-1].add(weightsDeltas)
+
+    for( let i = this.layers.length-1; i > 0; i--){ // i stop à 1
+      let whoT = Matrix.transpose(this.layers[i]);
+      let err = Matrix.multiply(whoT, errors)
+      errors = err
+
+      let gradients = Matrix.map(listResult[i], dsigmoid)
       gradients.multiply(errors)
       gradients.multiply(this.learning_rate)
 
-      let hiddenTransposed = Matrix.transpose(hidden)
+      let hiddenTransposed = Matrix.transpose(listResult[i-1])
       let weightsDeltas = Matrix.multiply(gradients, hiddenTransposed)
-      this.weights_ho.add(weightsDeltas)
-    }).reverse()
 
-
-
-
-    // Calculate the hidden layer errors
-    let who_t = Matrix.transpose(this.weights_ho);
-    let hidden_errors = Matrix.multiply(who_t, output_errors);
-
-    // Calculate hidden gradient
-    let hidden_gradient = Matrix.map(hidden, dsigmoid);
-    hidden_gradient.multiply(hidden_errors);
-    hidden_gradient.multiply(this.learning_rate);
-
-    // Calcuate input->hidden deltas
-    let inputs_T = Matrix.transpose(inputs);
-    let weight_ih_deltas = Matrix.multiply(hidden_gradient, inputs_T);
-
-    this.weights_ih.add(weight_ih_deltas);
+      this.layers[i-1].add(weightsDeltas)
+    }
   }
 
-  // var arr = [1, 2, 3];
-  //
-  // arr.slice().reverse().forEach(function(x) {
-  //     console.log(x);
-  // })
 
 
   static draw(nn, context, inputs){
@@ -347,11 +328,11 @@ const init = () => {
 var cpt = 0
 const loop = () => {
   jeu.listAsteroids = Asteroid.addAsteroid(jeu.listAsteroids)
-  if(cpt%30 === 0) jeu.spaceship.shoot(jeu.listAsteroids[0].x, jeu.listAsteroids[0].y)
+  if(cpt%1 === 0) jeu.spaceship.shoot(jeu.listAsteroids[0].x, jeu.listAsteroids[0].y)
   cpt++
 
   jeu.listRockets.forEach( rocket => rocket.movement())
-
+  jeu.listAsteroids[0].movement()
   dessin()
   requestAnimationFrame(loop)
 }
@@ -376,7 +357,7 @@ class Spaceship {
     // voir plus tard this.speed = 0
     //this.collision = false
 
-    this.brain = new NeuralNetwork([1,1,1])
+    this.brain = new NeuralNetwork([1, 1, 1])
     this.brain.drawX = 100
     this.brain.drawY = 1000
   }
@@ -394,9 +375,13 @@ class Spaceship {
     //console.log(Math.atan2(y, x) * 180 / Math.PI + 180)
     NeuralNetwork.draw(this.brain, ctxNeuralNetwork, inputs)
     let results = this.brain.think(inputs)
+    // console.log("results : ", results[0])
     jeu.listRockets.push(new Rocket(this.x, this.y, Math.floor(results[0]*360)))
+
     // Attention aux result > 1 avec relu
-    console.log(Math.floor(results[0]*360))
+    // console.log(Math.floor(results[0]*360))
+    // console.log(inputs[0])
+    this.brain.train(inputs, inputs)
   }
 }
 
@@ -412,7 +397,7 @@ class Asteroid {
   }
 
   movement() {
-    // A ajouter
+    this.x += -1 + Math.random()*2
   }
 
   static addAsteroid(list) {
@@ -436,7 +421,7 @@ class Rocket {
     let plusX = Math.cos(this.orientation*Math.PI/180) * this.speed
     let plusY = Math.sin(this.orientation*Math.PI/180) * this.speed
     this.x += plusX
-    this.y += plusY
+    this.y -= plusY
   }
 
   collision(listAsteroids) {
