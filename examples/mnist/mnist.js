@@ -262,6 +262,7 @@ class NeuralNetwork {
 
 // ADD BIAS TO DRAW FUNCTION
   static draw(nn, context, inputs){
+    console.log(inputs)
     context.clearRect(0, 0, context.canvas.width, context.canvas.height)
 
     inputs.forEach( (elem, index) => { // Voir si on peut draw les inputs dans la boucle du dessous où s'il faut vraiment séparer
@@ -317,9 +318,7 @@ class ActivationFunction {
     this.dfunc = dfunc;
   }
 }
-// Ajouter BIAS ?
-// Passer le code en full anglais
-// Mettre les functions d'activations dans la lib
+
 const sigmoid = new ActivationFunction(
   x => 1 / (1 + Math.exp(-x)),
   y => y * (1 - y)
@@ -328,24 +327,34 @@ const relu = new ActivationFunction(
   x => x < 0 ? 0 : x,
   y => y < 0 ? 0 : 1
 )
+const leakyRelu = new ActivationFunction(
+  x => x < 0 ? 0.01*x : x,
+  y => y < 0 ? 0.01 : 1
+)
 const tanh = new ActivationFunction(
   x => Math.tanh(x),
   y => 1 - (y * y)
 )
-const step = x => x < 0 ? 0 : 1
 const identity = new ActivationFunction(
   x => x,
   y => 1
 )
+const step = x => x < 0 ? 0 : 1
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
-var contextctx, canvas
+
+var ctx, canvas
 var ctxNeuralNetwork, canvasNN
+var contextChart
+var myChart
+
 var width, height
-// Ajouter resize function
+
+const url = 'https://sylvainsenechal.github.io/projects/tensorFlow/dataMnist.json';
+
 const init = () => {
   canvas = document.getElementById('mon_canvas')
   ctx = canvas.getContext('2d')
@@ -358,144 +367,198 @@ const init = () => {
   ctxNeuralNetwork.canvas.width = width
   ctxNeuralNetwork.canvas.height = height
 
-  jeu.spaceship = new Spaceship()
+  createChart()
+  initCanvas()
+  getData(url)
+
   loop()
 }
 
-var cpt = 0
+let trainingSpeed = 10
 const loop = () => {
-  jeu.listAsteroids = Asteroid.addAsteroid(jeu.listAsteroids)
-  if(cpt%1 === 0) jeu.spaceship.shoot(jeu.listAsteroids[0].x, jeu.listAsteroids[0].y)
-  cpt++
-
-  jeu.listRockets.forEach( rocket => rocket.movement())
-  jeu.listAsteroids[0].movement()
-  dessin()
-  requestAnimationFrame(loop)
-}
-
-const jeu = {
-	width: 900,
-	height: 900,
-	positionX: 50,
-	positionY: 50,
-  spaceship: null,
-  listAsteroids: [],
-  listRockets: [],
-  // voir plus tard gravityPower: 0.7,
-  nbGeneration: 1,
-}
-
-class Spaceship {
-  constructor() {
-    this.x = Math.floor(jeu.width/2)
-    this.y = Math.floor(jeu.height/2)
-
-    // voir plus tard this.speed = 0
-    //this.collision = false
-
-    this.brain = new NeuralNetwork([1, 1, 1])
-    this.brain.drawX = 100
-    this.brain.drawY = 1000
-  }
-
-  shoot(targetX, targetY) {
-    // inputs = [angleToTarget] + normalize
-    let x = -(targetX - this.x)
-    let y = (targetY - this.y)
-    let inputs = [
-      (Math.atan2(y, x) * 180 / Math.PI + 180) / 360,
-      //angleObjectif
-      //distancesObj
-      //vitesseObj
-    ]
-    //console.log(Math.atan2(y, x) * 180 / Math.PI + 180)
-    NeuralNetwork.draw(this.brain, ctxNeuralNetwork, inputs)
-    let results = this.brain.think(inputs)
-    // console.log("results : ", results[0])
-    jeu.listRockets.push(new Rocket(this.x, this.y, Math.floor(results[0]*360)))
-
-    // Attention aux result > 1 avec relu
-    // console.log(Math.floor(results[0]*360))
-    // console.log(inputs[0])
-    this.brain.train(inputs, inputs)
-  }
-}
-
-
-class Asteroid {
-  constructor() {
-    this.x = Math.floor(Math.random()*jeu.width)
-    this.y = Math.floor(Math.random()*jeu.height)
-    this.size = 10
-
-    //this.speed = Math.random()*jeu.maxSpeedAsteroids
-    //this.orientation = Math.floor(Math.random()*360)
-  }
-
-  movement() {
-    this.x += -1 + Math.random()*2
-  }
-
-  static addAsteroid(list) {
-    if(list.length === 0){
-      list.push(new Asteroid())
+  if(ready){
+    for( let i = 0; i < trainingSpeed; i++){
+      training()
     }
-    return list
+
+    guess()
+    dessin()
+    changeGrid()
+
+  }
+
+  requestAnimationFrame(loop);
+}
+
+const getData = url => {
+  fetch(url)
+  	.then(response => {
+      return response.json();
+    })
+  	.then( data  => {
+  		console.log(data.entries[0]);
+      listInputs = data.entries
+      ready = true
+  	});
+}
+
+var ready = false
+
+let listInputs
+let brain = new NeuralNetwork([784, 10, 10])
+brain.setActivationFunction(sigmoid)
+brain.drawX = 100
+brain.drawY = 800
+
+const training = () => {
+  let idInput = Math.floor(Math.random()*listInputs.length)
+  let inputs = []
+  for( let i = 0; i < 784; i++){
+    inputs[i] = listInputs[idInput][i+1]
+  }
+
+  let outputTarget = []
+  for(let i = 0; i < 10; i++){
+    if( i === Number(listInputs[idInput].label))  outputTarget[i] = 1
+    else outputTarget[i] = 0
+  }
+  // console.log(outputTarget)
+
+  brain.train(inputs, outputTarget)
+}
+
+const guess = () => {
+  let inputs = []
+
+  for( let i = 0; i < nbCase; i++){
+    for( let j = 0; j < nbCase; j++){
+      inputs.push(grid[i][j])
+    }
+  }
+
+  NeuralNetwork.draw(brain, ctxNeuralNetwork, inputs)
+
+  let results = brain.think(inputs)
+  myChart.data.datasets[0].data = results
+  myChart.update()
+  document.getElementById('result').innerHTML = 'Result guessed : ' + results[0]
+}
+
+const changeGrid = () => {
+
+  for( let i = 0; i < 784; i++){
+    let a = Math.floor(i/28)
+    let b = i%28
+
+    grid[a][b] = listInputs[13][i+1]
   }
 }
 
-class Rocket {
-  constructor(x, y, orientation) {
-    this.x = x
-    this.y = y
-    this.speed = 5
-    this.size = 5
-    this.orientation = orientation
-  }
+let grid = []
+let widthCase = 10
+let nbCase = 28
+let offset = 150
 
-  movement() {
-    let plusX = Math.cos(this.orientation*Math.PI/180) * this.speed
-    let plusY = Math.sin(this.orientation*Math.PI/180) * this.speed
-    this.x += plusX
-    this.y -= plusY
-  }
-
-  collision(listAsteroids) {
-
+const initCanvas = () => {
+  for(let i = 0; i < nbCase; i++){
+    grid[i] = []
+    for(let j = 0; j < nbCase; j++){
+      grid[i][j] = 0
+    }
   }
 }
-
 
 
 const dessin = () => {
-	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
-
-  ctx.fillStyle = "#000000"
-  ctx.fillRect(jeu.positionX, jeu.positionY, jeu.width, jeu.height); // Cadre noir du jeu
-
-	ctx.fillStyle = "#768294"
-	for (asteroid of jeu.listAsteroids) {
-    ctx.beginPath()
-    ctx.arc(asteroid.x + jeu.positionX, asteroid.y + jeu.positionY, asteroid.size, 0, 2*Math.PI)
-    ctx.fill()
-	}
-
-  ctx.fillStyle = "#ff0000"
-	for (rockets of jeu.listRockets) {
-    ctx.beginPath()
-    ctx.arc(rockets.x + jeu.positionX, rockets.y + jeu.positionY, rockets.size, 0, 2*Math.PI)
-    ctx.fill()
-	}
-
-  // voir pour dessiner l'orientation du vaisseau
-  ctx.fillStyle = "#0656ce"
-  ctx.fillRect(jeu.spaceship.x + jeu.positionX, jeu.spaceship.y + jeu.positionY, 20, 20)
-
-
-
-  // ctx.font = "40px Comic Sans MS"
-  // ctx.strokeText("Generation : " + jeu.nbGeneration, 350, 40)
+	ctx.clearRect(0, 0, canvas.width, canvas.height)
+  for(let i = 0; i < nbCase; i++){
+    for(let j = 0; j < nbCase; j++){
+      if(grid[i][j] === 0){
+        ctx.fillStyle = "#000000"
+      }
+      else{
+        ctx.fillStyle = 'rgb(' + grid[i][j]*255+ ',' + grid[i][j]*255+ ',' + grid[i][j]*255+ ')'
+      }
+      ctx.fillRect(i*widthCase + offset, j*widthCase + offset, widthCase, widthCase);
+    }
+  }
 }
 
-window.addEventListener('load', init)
+var mouseDown = false
+document.onmousedown = e => {
+  mouseDown = true
+}
+document.onmouseup = e => {
+  mouseDown = false
+}
+
+document.onmousemove = e => {
+  l = Math.floor((e.clientX-offset)/widthCase)
+  c = Math.floor((e.clientY-offset)/widthCase)
+  if(mouseDown){
+    try{
+      grid[l][c] = 1
+      grid[l-1][c] = (0.5>grid[l-1][c]) ? 0.5 : grid[l-1][c]
+      grid[l-2][c] = (0.25>grid[l-2][c]) ? 0.25 : grid[l-2][c]
+
+      grid[l+1][c] = (0.5>grid[l+1][c]) ? 0.5 : grid[l+1][c]
+      grid[l+2][c] = (0.25>grid[l+2][c]) ? 0.25 : grid[l+2][c]
+
+      grid[l][c] = 1
+      grid[l][c-1] = (0.5>grid[l][c-1]) ? 0.5 : grid[l][c-1]
+      grid[l][c-2] = (0.25>grid[l][c-2]) ? 0.25 : grid[l][c-2]
+      grid[l][c+1] = (0.5>grid[l][c+1]) ? 0.5 : grid[l][c+1]
+      grid[l][c+2] = (0.25>grid[l][c+2]) ? 0.25 : grid[l][c+2]
+
+      grid[l-1][c-1] = (0.5>grid[l-1][c-1]) ? 0.5 : grid[l-1][c-1]
+      grid[l+1][c+1] = (0.5>grid[l+1][c+1]) ? 0.5 : grid[l+1][c+1]
+      grid[l-1][c+1] = (0.5>grid[l-1][c+1]) ? 0.5 : grid[l-1][c+1]
+      grid[l+1][c-1] = (0.5>grid[l+1][c-1]) ? 0.5 : grid[l+1][c-1]
+    }
+    catch(err){
+      // console.log(err)
+    }
+  }
+}
+
+const createChart = () => {
+  contextChart = document.getElementById("myChart").getContext('2d');
+  myChart = new Chart(contextChart, {
+    type: 'bar',
+    data: {
+      labels: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+      datasets: [{
+        label: '# of Votes',
+        data: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.2)',
+          'rgba(54, 162, 235, 0.2)',
+          'rgba(255, 206, 86, 0.2)',
+          'rgba(75, 192, 192, 0.2)',
+          'rgba(153, 102, 255, 0.2)',
+          'rgba(255, 159, 64, 0.2)'
+        ],
+        borderColor: [
+          'rgba(255,99,132,1)',
+          'rgba(54, 162, 235, 1)',
+          'rgba(255, 206, 86, 1)',
+          'rgba(75, 192, 192, 1)',
+          'rgba(153, 102, 255, 1)',
+          'rgba(255, 159, 64, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      scales: {
+        yAxes: [{
+          ticks: {
+            beginAtZero:true
+          }
+        }]
+      }
+    }
+  });
+}
+
+window.addEventListener('load', init);

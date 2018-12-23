@@ -317,9 +317,7 @@ class ActivationFunction {
     this.dfunc = dfunc;
   }
 }
-// Ajouter BIAS ?
-// Passer le code en full anglais
-// Mettre les functions d'activations dans la lib
+
 const sigmoid = new ActivationFunction(
   x => 1 / (1 + Math.exp(-x)),
   y => y * (1 - y)
@@ -328,21 +326,25 @@ const relu = new ActivationFunction(
   x => x < 0 ? 0 : x,
   y => y < 0 ? 0 : 1
 )
+const leakyRelu = new ActivationFunction(
+  x => x < 0 ? 0.01*x : x,
+  y => y < 0 ? 0.01 : 1
+)
 const tanh = new ActivationFunction(
   x => Math.tanh(x),
   y => 1 - (y * y)
 )
-const step = x => x < 0 ? 0 : 1
 const identity = new ActivationFunction(
   x => x,
   y => 1
 )
+const step = x => x < 0 ? 0 : 1
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
-var contextctx, canvas
+var ctx, canvas
 var ctxNeuralNetwork, canvasNN
 var width, height
 // Ajouter resize function
@@ -375,10 +377,10 @@ const loop = () => {
   requestAnimationFrame(loop)
 }
 
-let brain = new NeuralNetwork([2, 8, 4, 2, 1])
+let brain = new NeuralNetwork([2, 4, 2, 1])
 brain.setActivationFunction(sigmoid)
 brain.drawX = 100
-brain.drawY = 500
+brain.drawY = 600
 
 let listInputs = [
   {i: [0, 0], o: [0]},
@@ -393,8 +395,8 @@ const training = () => {
   brain.train(inputs.i, inputs.o)
 }
 
-gridX = 30
-gridY = 30
+gridX = 50
+gridY = 50
 sizeDraw = 10
 const dessin = () => {
 	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)
