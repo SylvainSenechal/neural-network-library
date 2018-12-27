@@ -168,7 +168,6 @@ class NeuralNetwork {
       this.radiusPerceptron = nn.radiusPerceptron
       this.thicknessWeights = nn.thicknessWeights
 
-      this.learning_rate = 0.1
     }
     else{
       let layers = []
@@ -194,13 +193,16 @@ class NeuralNetwork {
       this.radiusPerceptron = radiusPerceptron
       this.thicknessWeights = thicknessWeights
 
-      this.learning_rate = 0.1
     }
-    this.setActivationFunction();
+    this.setActivationFunction()
+    this.setLearningRate()
 
   }
   setActivationFunction(func = sigmoid) {
     this.activationFunction = func;
+  }
+  setLearningRate(learning_rate = 0.1) {
+    this.learning_rate = learning_rate;
   }
   copy(){
     return new NeuralNetwork(this);
@@ -262,7 +264,6 @@ class NeuralNetwork {
 
 // ADD BIAS TO DRAW FUNCTION
   static draw(nn, context, inputs){
-    console.log(inputs)
     context.clearRect(0, 0, context.canvas.width, context.canvas.height)
 
     inputs.forEach( (elem, index) => { // Voir si on peut draw les inputs dans la boucle du dessous où s'il faut vraiment séparer
@@ -371,21 +372,17 @@ const init = () => {
   initCanvas()
   getData(url)
 
-  loop()
 }
 
-let trainingSpeed = 10
+let trainingSpeed = 20
 const loop = () => {
-  if(ready){
-    for( let i = 0; i < trainingSpeed; i++){
-      training()
-    }
-
-    guess()
-    dessin()
-    changeGrid()
-
+  for( let i = 0; i < trainingSpeed; i++){
+    training()
   }
+
+  guess()
+  dessin()
+  // changeGrid()
 
   requestAnimationFrame(loop);
 }
@@ -398,15 +395,14 @@ const getData = url => {
   	.then( data  => {
   		console.log(data.entries[0]);
       listInputs = data.entries
-      ready = true
+      loop()
   	});
 }
 
-var ready = false
-
 let listInputs
-let brain = new NeuralNetwork([784, 10, 10])
+let brain = new NeuralNetwork([784, 10])
 brain.setActivationFunction(sigmoid)
+brain.setLearningRate(0.2)
 brain.drawX = 100
 brain.drawY = 800
 
@@ -432,7 +428,7 @@ const guess = () => {
 
   for( let i = 0; i < nbCase; i++){
     for( let j = 0; j < nbCase; j++){
-      inputs.push(grid[i][j])
+      inputs.push(grid[j][i])
     }
   }
 
@@ -450,7 +446,7 @@ const changeGrid = () => {
     let a = Math.floor(i/28)
     let b = i%28
 
-    grid[a][b] = listInputs[13][i+1]
+    grid[a][b] = listInputs[42][i+1]
   }
 }
 
