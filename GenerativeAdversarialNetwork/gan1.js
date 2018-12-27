@@ -398,7 +398,7 @@ var myChart
 
 var width, height
 
-const url = 'https://sylvainsenechal.github.io/neural-network-library/GenerativeAdversarialNetwork/train-image.idx3-ubyte';
+const url = 'https://sylvainsenechal.github.io/neural-network-library/GenerativeAdversarialNetwork/train-images.idx3-ubyte';
 
 const init = () => {
   canvas = document.getElementById('mon_canvas')
@@ -436,11 +436,12 @@ const getData = url => {
   	.then(response => {
       return response;
     })
-  	// .then( data  => {
-  	// 	console.log(data.entries[0]);
-    //   listInputs = data.entries
-    //   loop()
-  	// });
+  	.then( data  => {
+  		// console.log(data.entries[0]);
+      // listInputs = data.entries
+      // loop()
+      console.log(data)
+  	});
 }
 
 let listInputs
