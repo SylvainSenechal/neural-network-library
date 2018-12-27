@@ -398,7 +398,7 @@ var myChart
 
 var width, height
 
-const url = 'https://sylvainsenechal.github.io/projects/tensorFlow/dataMnist.json';
+const url = 'https://sylvainsenechal.github.io/neural-network-library/GenerativeAdversarialNetwork/train-image.idx3-ubyte';
 
 const init = () => {
   canvas = document.getElementById('mon_canvas')
@@ -434,13 +434,13 @@ const loop = () => {
 const getData = url => {
   fetch(url)
   	.then(response => {
-      return response.json();
+      return response;
     })
-  	.then( data  => {
-  		console.log(data.entries[0]);
-      listInputs = data.entries
-      loop()
-  	});
+  	// .then( data  => {
+  	// 	console.log(data.entries[0]);
+    //   listInputs = data.entries
+    //   loop()
+  	// });
 }
 
 let listInputs
